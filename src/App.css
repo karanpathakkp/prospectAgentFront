@@ -1,0 +1,134 @@
+#root {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: center;
+}
+
+/* Excel-like table styles */
+.excel-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  border: 1px solid #e5e7eb;
+  max-width: 100%;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.excel-table th,
+.excel-table td {
+  position: relative;
+  border: 1px solid #e5e7eb;
+  padding: 8px 12px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  box-sizing: border-box;
+}
+
+.excel-table th {
+  background-color: #f9fafb;
+  font-weight: 500;
+  color: #4b5563;
+  text-align: left;
+  font-size: 0.875rem;
+}
+
+.excel-table tr:hover {
+  background-color: #f9fafb;
+}
+
+/* Resizable columns */
+.resizable-column {
+  position: relative;
+}
+
+.resizer {
+  position: absolute;
+  right: 0;
+  top: 0;
+  height: 100%;
+  width: 8px;
+  background-color: transparent;
+  cursor: col-resize;
+  user-select: none;
+  z-index: 10;
+  touch-action: none;
+}
+
+.resizer:hover {
+  background-color: rgba(37, 99, 235, 0.3);
+}
+
+.resizer:active {
+  background-color: rgba(37, 99, 235, 0.6);
+}
+
+/* Show a visual indicator for resizable columns on hover */
+.resizable-column:hover {
+  background-color: #f3f4f6;
+}
+
+/* Add a subtle divider line to indicate resizable columns */
+.resizable-column .resizer::after {
+  content: "";
+  position: absolute;
+  right: 3px;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 20px;
+  width: 2px;
+  background-color: #d1d5db;
+  display: none;
+}
+
+.resizable-column:hover .resizer::after {
+  display: block;
+}
+
+/* Table container with horizontal scroll */
+.table-container {
+  width: 100%;
+  overflow-x: auto;
+  position: relative;
+  max-width: 100%;
+}
+
+/* Fixed columns */
+.fixed-column {
+  position: sticky;
+  left: 0;
+  background-color: white;
+  z-index: 1;
+}
+
+.fixed-column-header {
+  position: sticky;
+  left: 0;
+  background-color: #f9fafb;
+  z-index: 2;
+}
+
+/* For Excel-like grid lines */
+.excel-table td, .excel-table th {
+  border-right: 1px solid #e5e7eb;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+/* Excel-like header styling */
+.excel-header {
+  background-color: #f3f4f6;
+  border-bottom: 2px solid #d1d5db;
+}
+
+/* Excel-like alternating row colors */
+.excel-table tbody tr:nth-child(even) {
+  background-color: #f9fafb;
+}
+
+/* Excel-like cell styling */
+.excel-cell {
+  padding: 6px 8px;
+  font-size: 0.875rem;
+}

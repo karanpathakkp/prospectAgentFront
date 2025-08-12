@@ -1,0 +1,170 @@
+import asyncio
+from dataclasses import dataclass, field
+from agents import Agent, Runner, function_tool, ModelSettings
+from dotenv import load_dotenv
+load_dotenv()
+
+@dataclass
+class InputTokensDetails:
+    cached_tokens: int = 0
+
+@dataclass
+class OutputTokensDetails:
+    reasoning_tokens: int = 0
+
+@dataclass
+class Usage:
+    requests: int = 0
+    """Total requests made to the LLM API."""
+
+    input_tokens: int = 0
+    """Total input tokens sent, across all requests."""
+
+    input_tokens_details: InputTokensDetails = field(
+        default_factory=lambda: InputTokensDetails(cached_tokens=0)
+    )
+    """Details about the input tokens, matching responses API usage details."""
+    
+    output_tokens: int = 0
+    """Total output tokens received, across all requests."""
+
+    output_tokens_details: OutputTokensDetails = field(
+        default_factory=lambda: OutputTokensDetails(reasoning_tokens=0)
+    )
+    """Details about the output tokens, matching responses API usage details."""
+
+    @property
+    def total_tokens(self) -> int:
+        """Total tokens sent and received, across all requests."""
+        return self.input_tokens + self.output_tokens
+
+    def add(self, other: "Usage") -> None:
+        """Add another Usage object's metrics to this one."""
+        self.requests += other.requests
+        self.input_tokens += other.input_tokens
+        self.output_tokens += other.output_tokens
+        
+        # Handle input token details
+        if other.input_tokens_details:
+            self.input_tokens_details.cached_tokens += other.input_tokens_details.cached_tokens
+        
+        # Handle output token details
+        if other.output_tokens_details:
+            self.output_tokens_details.reasoning_tokens += other.output_tokens_details.reasoning_tokens
+
+    def __str__(self) -> str:
+        """Human-readable string representation."""
+        return (f"Usage(requests={self.requests}, "
+                f"input_tokens={self.input_tokens}, "
+                f"output_tokens={self.output_tokens}, "
+                f"total_tokens={self.total_tokens})")
+
+@function_tool
+def get_weather(city: str) -> str:
+    """Returns weather info for the specified city."""
+    return f"The weather in {city} is sunny"
+
+async def main():
+    """Main async function to run the weather agent with usage tracking."""
+    
+    # Create the agent with usage tracking
+    agent = Agent(
+        name="Weather Agent",
+        instructions="Retrieve weather details for the requested city. Always use the get_weather tool to fetch current weather information.",
+        tools=[get_weather],
+        model_settings=ModelSettings(tool_choice="get_weather")
+    )
+
+    # Initialize usage tracking
+    usage = Usage()
+
+    # Run the agent and capture the result
+    result = await Runner.run(agent, "What is the weather in Tokyo?")
+
+    # Extract response from RunResult
+    response_text = "No response found"
+    if hasattr(result, 'final_output') and result.final_output:
+        response_text = str(result.final_output)
+    elif hasattr(result, 'raw_responses') and result.raw_responses:
+        # Get the last response from raw_responses
+        last_response = result.raw_responses[-1]
+        if hasattr(last_response, 'content'):
+            response_text = last_response.content
+        elif hasattr(last_response, 'message') and hasattr(last_response.message, 'content'):
+            response_text = last_response.message.content
+    
+    print(f"Agent Response: {response_text}")
+    
+    # Extract usage information from RunResult
+    usage_found = False
+    if hasattr(result, 'raw_responses') and result.raw_responses:
+        # Check each raw response for usage information
+        for raw_response in result.raw_responses:
+            if hasattr(raw_response, 'usage') and raw_response.usage:
+                usage.add(raw_response.usage)
+                usage_found = True
+    
+    if usage_found:
+        print(f"Usage Stats: {usage}")
+        print(f"Cached Tokens: {usage.input_tokens_details.cached_tokens}")
+        print(f"Reasoning Tokens: {usage.output_tokens_details.reasoning_tokens}")
+    else:
+        print("Usage information not available in result")
+        # Debug: let's see what raw_responses contains
+        if hasattr(result, 'raw_responses') and result.raw_responses:
+            print(f"Raw responses count: {len(result.raw_responses)}")
+            for i, raw_resp in enumerate(result.raw_responses):
+                print(f"Raw response {i} type: {type(raw_resp)}")
+                print(f"Raw response {i} attributes: {[attr for attr in dir(raw_resp) if not attr.startswith('_')]}")
+        else:
+            print("No raw_responses found")
+
+    # Example of running multiple queries and accumulating usage
+    print("\n--- Running multiple queries ---")
+    queries = [
+        "What is the weather in New York?",
+        "How about the weather in London?",
+        "What's the weather like in Paris?"
+    ]
+
+    total_usage = Usage()
+
+    for query in queries:
+        result = await Runner.run(agent, query)
+        
+        # Extract response from RunResult
+        response_text = "No response found"
+        if hasattr(result, 'final_output') and result.final_output:
+            response_text = str(result.final_output)
+        elif hasattr(result, 'raw_responses') and result.raw_responses:
+            last_response = result.raw_responses[-1]
+            if hasattr(last_response, 'content'):
+                response_text = last_response.content
+            elif hasattr(last_response, 'message') and hasattr(last_response.message, 'content'):
+                response_text = last_response.message.content
+        
+        # Add usage if available from raw_responses
+        if hasattr(result, 'raw_responses') and result.raw_responses:
+            for raw_response in result.raw_responses:
+                if hasattr(raw_response, 'usage') and raw_response.usage:
+                    total_usage.add(raw_response.usage)
+        
+        print(f"Query: {query}")
+        print(f"Response: {response_text}")
+        print(f"Current Total Usage: {total_usage}")
+        print("---")
+
+    print(f"\nFinal accumulated usage across all queries: {total_usage}")
+
+# Alternative synchronous wrapper function
+def run_weather_agent():
+    """Synchronous wrapper to run the async weather agent."""
+    return asyncio.run(main())
+
+# Run the async main function
+if __name__ == "__main__":
+    # Option 1: Run directly with asyncio.run()
+    asyncio.run(main())
+    
+    # Option 2: Use the synchronous wrapper (comment out the line above and uncomment below)
+    # run_weather_agent()
