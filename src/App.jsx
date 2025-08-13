@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import logoImage from './image.png'; // Import the image
 import { Search, Clock, CheckCircle, ExternalLink, User, Building, Users, Download } from 'lucide-react';
 import './App.css'; // Make sure to use the existing CSS file
+import { API_ENDPOINTS } from './config';
 
 const ProspectSearch = () => {
   const [criteriaSentence, setCriteriaSentence] = useState('SDE at Zomato');
@@ -32,7 +33,7 @@ const ProspectSearch = () => {
     setError('');
     
     try {
-      const response = await fetch('http://139.59.27.253:8000/prospect/search', {
+      const response = await fetch(API_ENDPOINTS.SEARCH, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -164,7 +165,7 @@ const ProspectSearch = () => {
     }
     
     try {
-      const response = await fetch(`http://139.59.27.253:8000/prospect/status/${id}`);
+      const response = await fetch(API_ENDPOINTS.STATUS(id));
       const data = await response.json();
       
       setMessage(data.message);
