@@ -19,6 +19,10 @@ const ProspectSearch = () => {
   const [startWidth, setStartWidth] = useState(0);
   const tableRef = useRef(null);
 
+  // Debug logging
+  console.log('ProspectSearch component rendered');
+  console.log('API_BASE_URL:', API_ENDPOINTS.SEARCH);
+
 
 
   
@@ -326,34 +330,111 @@ const ProspectSearch = () => {
       }
     };
 
-      // Helper function to render match status
-  const renderMatchStatus = (status) => {
-    if (status === 'matched') {
+    // Helper function to render match status with tooltip
+    const renderMatchStatus = (status, thought = null, criteria = null, isFirstRow = false) => {
+      const getStatusContent = () => {
+        if (status === 'matched') {
+          return (
+            <span className="inline-flex items-center justify-center px-3 py-1 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-200">
+              Match
+            </span>
+          );
+        } else if (status === 'not_matched') {
+          return (
+            <span className="inline-flex items-center justify-center px-3 py-1 rounded-full text-xs font-medium bg-red-50 text-red-700 border border-red-200">
+              No match
+            </span>
+          );
+        } else if (status === 'not_found') {
+          return (
+            <span className="inline-flex items-center justify-center px-3 py-1 rounded-full text-xs font-medium bg-gray-50 text-gray-600 border border-gray-200">
+              Unknown
+            </span>
+          );
+        }
+        else if(status === 'probably_matched') {
+          return (
+            <span className="inline-flex items-center justify-center px-3 py-1 rounded-full text-xs font-medium bg-gray-50 text-orange-600 border border-orange-200">
+              Probably
+            </span>
+          );
+        }
+        else {
+          return (
+            <span className="inline-flex items-center justify-center px-3 py-1 rounded-full text-xs font-medium bg-gray-50 text-gray-600 border border-gray-200">
+              -
+            </span>
+          );
+        }
+      };
+
+      // If no thought data, return simple status
+      if (!thought) {
+        return getStatusContent();
+      }
+
+      // Parse thought data to get specific criteria thought
+      let tooltipText = '';
+      try {
+        const thoughtData = JSON.parse(thought);
+        if (criteria && thoughtData[criteria]) {
+          tooltipText = thoughtData[criteria];
+        }
+      } catch (e) {
+        console.error('Error parsing thought data:', e);
+        // Fallback: show raw thought data if parsing fails
+        tooltipText = `Raw thought: ${thought}`;
+      }
+
+      // Debug logging
+      console.log('Tooltip debug:', { status, thought, criteria, tooltipText });
+
+      // For testing: always show tooltip with some content
+      if (!tooltipText || tooltipText.trim() === '') {
+        tooltipText = `Test tooltip for ${criteria}: ${status}`;
+      }
+
       return (
-        <span className="inline-flex items-center justify-center px-3 py-1 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-200">
-          Match
-        </span>
+        <div className="relative group inline-block">
+          {getStatusContent()}
+          <div className="tooltip absolute px-3 py-2 bg-gray-800 bg-opacity-90 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-[999999] max-w-xs break-words shadow-lg min-w-32 border border-gray-600" style={{ 
+            ...(isFirstRow ? {
+              top: '100%',
+              marginTop: '8px'
+            } : {
+              bottom: '100%',
+              marginBottom: '8px'
+            }),
+            left: '50%', 
+            transform: 'translateX(-50%)',
+            zIndex: 999999 
+          }}>
+            <div className="whitespace-normal text-center font-bold">{tooltipText || 'No tooltip data'}</div>
+            <div className="absolute" style={{
+              ...(isFirstRow ? {
+                bottom: '100%',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                width: '0',
+                height: '0',
+                borderLeft: '4px solid transparent',
+                borderRight: '4px solid transparent',
+                borderBottom: '4px solid #1f2937'
+              } : {
+                top: '100%',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                width: '0',
+                height: '0',
+                borderLeft: '4px solid transparent',
+                borderRight: '4px solid transparent',
+                borderTop: '4px solid #1f2937'
+              })
+            }}></div>
+          </div>
+        </div>
       );
-    } else if (status === 'not_matched') {
-      return (
-        <span className="inline-flex items-center justify-center px-3 py-1 rounded-full text-xs font-medium bg-red-50 text-red-700 border border-red-200">
-          No match
-        </span>
-      );
-    } else if (status === 'not_found') {
-      return (
-        <span className="inline-flex items-center justify-center px-3 py-1 rounded-full text-xs font-medium bg-gray-50 text-gray-600 border border-gray-200">
-          Unknown
-        </span>
-      );
-    } else {
-      return (
-        <span className="inline-flex items-center justify-center px-3 py-1 rounded-full text-xs font-medium bg-gray-50 text-gray-600 border border-gray-200">
-          -
-        </span>
-      );
-    }
-  };
+    };
 
     // Get unique match criteria from all profiles
     const allMatchCriteria = new Set();
@@ -469,22 +550,22 @@ const ProspectSearch = () => {
                       </div>
                     </td>
                     <td className="excel-cell">
-                      {profile.all_criteria_met === true ? (
+                        {profile.all_criteria_met === true ? (
                         <div className="flex items-center">
                           <span className="text-green-600 mr-1">✓</span> 
                           <span className="text-sm"></span>
                         </div>
-                      ) : profile.all_criteria_met === false ? (
+                        ) : profile.all_criteria_met === false ? (
                         <div className="flex items-center">
                           <span className="text-red-600 mr-1">✗</span> 
                           <span className="text-sm"></span>
                         </div>
-                      ) : (
+                        ) : (
                         <div className="flex items-center">
                           <span className="text-gray-400 mr-1">?</span>
                           <span className="text-sm">Unknown</span>
                         </div>
-                      )}
+                        )}
                     </td>
                     <td className="excel-cell">
                       <div className="text-sm text-gray-700 truncate">
@@ -493,19 +574,19 @@ const ProspectSearch = () => {
                     </td>
                     {matchCriteriaArray.map(criteria => (
                       <td key={criteria} className="excel-cell">
-                        {renderMatchStatus(reason[criteria])}
+                        {renderMatchStatus(reason[criteria], profile.thought, criteria, index === 0)}
                       </td>
                     ))}
                     <td className="excel-cell">
-                      <a
-                        href={profile.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center gap-1"
-                      >
-                        View
-                        <ExternalLink size={14} />
-                      </a>
+                        <a
+                          href={profile.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center gap-1"
+                        >
+                          View
+                          <ExternalLink size={14} />
+                        </a>
                     </td>
                   </tr>
                 );
@@ -527,7 +608,7 @@ const ProspectSearch = () => {
               <h1 className="text-2xl font-bold text-gray-900 mb-1">Prospect Search</h1>
               <p className="text-gray-600">Find key decision makers and prospects from any company</p>
             </div>
-            <div>
+               <div>
               <svg width="208" height="39" viewBox="0 0 208 39" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-auto h-8">
                 <g clipPath="url(#clip0_539_9426)">
                   <path d="M19.7437 38.5583C30.6479 38.5583 39.4874 29.9267 39.4874 19.2792C39.4874 8.63157 30.6479 0 19.7437 0C8.83956 0 0 8.63157 0 19.2792C0 29.9267 8.83956 38.5583 19.7437 38.5583Z" fill="#6640FF"/>
@@ -546,7 +627,7 @@ const ProspectSearch = () => {
                   </clipPath>
                 </defs>
               </svg>
-            </div>
+              </div>
           </div>
         </div>
 
@@ -658,7 +739,7 @@ const ProspectSearch = () => {
                 <div className="bg-white rounded-md shadow-sm border p-3 mb-4">
                   <div className="flex items-center gap-2 mb-3">
                     <CheckCircle className="text-purple-600" size={16} />
-                    <h3 className="text-sm font-medium text-gray-800">Criteria kp</h3>
+                    <h3 className="text-sm font-medium text-gray-800">Criteria</h3>
                   </div>
                   <div className="space-y-2">
                     {Object.entries(searchResults.profiles.search_summary.criteria).map(([key, value]) => (
@@ -713,7 +794,7 @@ const ProspectSearch = () => {
         ) : (
           // Single column layout for search form
           <div>
-            {/* Search Section */}
+        {/* Search Section */}
             <div className="bg-white rounded-lg shadow-sm border p-4 mb-4">
               <div className="flex flex-col gap-3">
                 <div className="flex items-center gap-2 mb-1">
@@ -721,100 +802,100 @@ const ProspectSearch = () => {
                   <h3 className="text-base font-medium text-gray-800">Search Criteria</h3>
                 </div>
                 
-                <div>
+            <div>
                   <label className="block text-sm font-medium text-gray-600 mb-1">Criteria Sentence</label>
-                  <textarea
-                    value={criteriaSentence}
-                    onChange={(e) => setCriteriaSentence(e.target.value)}
-                    placeholder="Enter search criteria (e.g., OpenAI - Chief Technology Officer, VP of Engineering)"
+              <textarea
+                value={criteriaSentence}
+                onChange={(e) => setCriteriaSentence(e.target.value)}
+                placeholder="Enter search criteria (e.g., OpenAI - Chief Technology Officer, VP of Engineering)"
                     className="w-full px-3 py-2 border border-gray-200 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm"
-                    disabled={searchState === 'searching' || searchState === 'processing'}
+                disabled={searchState === 'searching' || searchState === 'processing'}
                     rows={2}
-                    onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && initiateSearch()}
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
+                onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && initiateSearch()}
+              />
+              <p className="text-xs text-gray-500 mt-1">
                     Format: "Company - Position1, Position2, Position3"
-                  </p>
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-600 mb-1">Profile Count</label>
-                    <input
-                      type="number"
-                      min={1}
-                      max={50}
-                      value={desiredProfileCount}
-                      onChange={(e) => setDesiredProfileCount(Number(e.target.value))}
-                      placeholder="Max profiles (e.g., 10)"
-                      className="w-full px-3 py-2 border border-gray-200 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm"
-                      disabled={searchState === 'searching' || searchState === 'processing'}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-600 mb-1">Search Method</label>
-                    <select
-                      value={searchMethod}
-                      onChange={(e) => setSearchMethod(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm"
-                      disabled={searchState === 'searching' || searchState === 'processing'}
-                    >
-                      <option value="exa_search">Exa Search</option>
-                      <option value="tavily_search">Tavily Search</option>
-                    </select>
-                  </div>
-                  <button
-                    onClick={initiateSearch}
-                    disabled={!criteriaSentence.trim() || searchState === 'searching' || searchState === 'processing'}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1 text-sm font-medium"
-                  >
-                    <Search size={16} />
-                    Search
-                  </button>
-                </div>
-              </div>
+              </p>
             </div>
+            
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+              <div>
+                    <label className="block text-sm font-medium text-gray-600 mb-1">Profile Count</label>
+                <input
+                  type="number"
+                  min={1}
+                  max={50}
+                  value={desiredProfileCount}
+                  onChange={(e) => setDesiredProfileCount(Number(e.target.value))}
+                  placeholder="Max profiles (e.g., 10)"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm"
+                  disabled={searchState === 'searching' || searchState === 'processing'}
+                />
+              </div>
+              <div>
+                    <label className="block text-sm font-medium text-gray-600 mb-1">Search Method</label>
+                <select
+                  value={searchMethod}
+                  onChange={(e) => setSearchMethod(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm"
+                  disabled={searchState === 'searching' || searchState === 'processing'}
+                >
+                  <option value="exa_search">Exa Search</option>
+                  <option value="tavily_search">Tavily Search</option>
+                </select>
+              </div>
+              <button
+                onClick={initiateSearch}
+                disabled={!criteriaSentence.trim() || searchState === 'searching' || searchState === 'processing'}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1 text-sm font-medium"
+              >
+                    <Search size={16} />
+                Search
+              </button>
+            </div>
+          </div>
+        </div>
 
 
 
-            {/* Status Section */}
-            {(searchState === 'searching' || searchState === 'processing') && (
+        {/* Status Section */}
+        {(searchState === 'searching' || searchState === 'processing') && (
               <div className="bg-blue-50 border border-blue-100 rounded-md p-3 mb-4">
                 <div className="flex items-center gap-2">
                   <Clock className="text-blue-600 animate-spin" size={18} />
-                  <div>
+              <div>
                     <p className="font-medium text-blue-800 text-sm">
-                      {searchState === 'searching' ? 'Initiating search...' : 'Processing'}
-                    </p>
+                  {searchState === 'searching' ? 'Initiating search...' : 'Processing'}
+                </p>
                     <p className="text-blue-700 text-xs">{message}</p>
-                    {requestId && (
+                {requestId && (
                       <p className="text-blue-600 text-xs mt-0.5">Request ID: {requestId}</p>
-                    )}
-                  </div>
-                </div>
+                )}
               </div>
-            )}
+            </div>
+          </div>
+        )}
 
-            {/* Error Section */}
-            {searchState === 'error' && (
+        {/* Error Section */}
+        {searchState === 'error' && (
               <div className="bg-red-50 border border-red-100 rounded-md p-3 mb-4">
-                <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <div className="text-red-600">⚠️</div>
-                    <div>
+                <div className="text-red-600">⚠️</div>
+                <div>
                       <p className="font-medium text-red-800 text-sm">Search Failed</p>
                       <p className="text-red-700 text-xs">{error}</p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={resetSearch}
-                    className="text-red-600 hover:text-red-800 text-xs font-medium px-2 py-1 border border-red-200 rounded"
-                  >
-                    Try Again
-                  </button>
                 </div>
               </div>
-            )}
+              <button
+                onClick={resetSearch}
+                    className="text-red-600 hover:text-red-800 text-xs font-medium px-2 py-1 border border-red-200 rounded"
+              >
+                Try Again
+              </button>
+            </div>
+          </div>
+        )}
           </div>
         )}
       </div>
