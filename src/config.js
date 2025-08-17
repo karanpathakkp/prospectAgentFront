@@ -14,3 +14,6 @@ export const API_ENDPOINTS = {
   SEARCH: `${API_BASE_URL}/prospect/search`,
   STATUS: (id) => `${API_BASE_URL}/prospect/status/${id}`,
 };
+
+
+
