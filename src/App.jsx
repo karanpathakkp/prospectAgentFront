@@ -10,6 +10,8 @@ const ProspectSearch = () => {
   const [searchState, setSearchState] = useState('idle'); // idle, searching, processing, completed, error
   const [requestId, setRequestId] = useState('');
   const [searchResults, setSearchResults] = useState(null);
+  const [streamingProfiles, setStreamingProfiles] = useState([]);
+  const [newProfilesCount, setNewProfilesCount] = useState(0);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [columnWidths, setColumnWidths] = useState({});
@@ -173,15 +175,35 @@ const ProspectSearch = () => {
       
       setMessage(data.message);
       
-      if (data.status === 'completed') {
+      // Handle streaming profiles during processing
+      if (data.status === 'processing' && data.streamed_profiles) {
+        // Merge new streamed profiles with existing ones, avoiding duplicates
+        setStreamingProfiles(prevProfiles => {
+          const existingUrls = new Set(prevProfiles.map(p => p.url));
+          const newProfiles = data.streamed_profiles.filter(profile => !existingUrls.has(profile.url));
+          
+          // Update new profiles count for visual feedback
+          setNewProfilesCount(newProfiles.length);
+          
+          // Clear the count after 3 seconds
+          setTimeout(() => setNewProfilesCount(0), 3000);
+          
+          return [...prevProfiles, ...newProfiles];
+        });
+        // Continue polling every 5 seconds
+        pollingTimerRef.current = setTimeout(() => pollStatus(id), 5000);
+      } else if (data.status === 'completed') {
+        // Clear streaming profiles and set final results
+        setStreamingProfiles([]);
+        setNewProfilesCount(0);
         setSearchResults(data);
         setSearchState('completed');
-      } else if (data.status === 'processing') {
-        // Continue polling every 30 seconds, but store the timer reference
-        pollingTimerRef.current = setTimeout(() => pollStatus(id), 30000);
       } else if (data.status === 'failed') {
         setError(data.message || 'Search failed');
         setSearchState('error');
+      } else if (data.status === 'processing') {
+        // Continue polling every 5 seconds, but store the timer reference
+        pollingTimerRef.current = setTimeout(() => pollStatus(id), 5000);
       }
     } catch (err) {
       setError('Failed to check status');
@@ -199,6 +221,8 @@ const ProspectSearch = () => {
     setSearchState('idle');
     setRequestId('');
     setSearchResults(null);
+    setStreamingProfiles([]);
+    setNewProfilesCount(0);
     setMessage('');
     setError('');
   };
@@ -354,7 +378,7 @@ const ProspectSearch = () => {
         }
         else if(status === 'probably_matched') {
           return (
-            <span className="inline-flex items-center justify-center px-3 py-1 rounded-full text-xs font-medium bg-gray-50 text-orange-600 border border-orange-200">
+            <span className="inline-flex items-center justify-center px-3 py-1 rounded-full text-xs font-medium bg-orange-600 text-yellow-200 border border-yellow-200">
               Probably
             </span>
           );
@@ -362,7 +386,7 @@ const ProspectSearch = () => {
         else {
           return (
             <span className="inline-flex items-center justify-center px-3 py-1 rounded-full text-xs font-medium bg-gray-50 text-gray-600 border border-gray-200">
-              -
+              other
             </span>
           );
         }
@@ -443,7 +467,19 @@ const ProspectSearch = () => {
       Object.keys(reason).forEach(key => allMatchCriteria.add(key));
     });
 
-    const matchCriteriaArray = Array.from(allMatchCriteria);
+    // Ensure consistent table structure with minimum columns
+    let matchCriteriaArray = Array.from(allMatchCriteria);
+    
+    // If we have very few criteria during streaming, add some default ones to maintain table width
+    if (searchState === 'processing' && matchCriteriaArray.length < 2) {
+      // Add common criteria that might appear later
+      const defaultCriteria = ['position', 'company', 'experience'];
+      defaultCriteria.forEach(criteria => {
+        if (!matchCriteriaArray.includes(criteria)) {
+          matchCriteriaArray.push(criteria);
+        }
+      });
+    }
 
     return (
       <div className="bg-white rounded-lg shadow-sm border p-4">
@@ -453,8 +489,13 @@ const ProspectSearch = () => {
           <span className="bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded-full">{profiles.length} profiles</span>
         </div>
         
-        <div className="table-container">
-          <table ref={tableRef} className="excel-table">
+        <div className="table-container" style={{ 
+          overflowX: 'auto',
+          width: '100%'
+        }}>
+          <table ref={tableRef} className="excel-table" style={{ 
+            minWidth: searchState === 'processing' ? '1000px' : 'auto'
+          }}>
             <thead>
               <tr className="excel-header">
                 <th 
@@ -600,7 +641,7 @@ const ProspectSearch = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
-      <div className={`${searchState === 'completed' && searchResults ? 'max-w-7xl' : 'max-w-3xl'} mx-auto`}>
+      <div className={`${(searchState === 'completed' && searchResults) || (searchState === 'processing' && streamingProfiles.length > 0) ? 'max-w-7xl' : 'max-w-3xl'} mx-auto`}>
         {/* Header */}
         <div className="mb-5">
           <div className="flex items-center justify-between">
@@ -632,27 +673,63 @@ const ProspectSearch = () => {
         </div>
 
         {/* Layout changes based on search state */}
-        {searchState === 'completed' && searchResults ? (
+        {(searchState === 'completed' && searchResults) || (searchState === 'processing' && streamingProfiles.length > 0) ? (
           // Two-column layout for results
           <div className="flex gap-6">
             {/* Left Column - Table */}
             <div className="flex-1 max-w-full overflow-hidden">
               {(() => {
-                const allProfiles = searchResults.profiles.results?.selected_profiles || [];
-                const uniqueProfiles = allProfiles.filter((profile, index, self) => 
+                // Use streaming profiles during processing, final results when completed
+                const profilesToShow = searchState === 'completed' 
+                  ? (searchResults.profiles.results?.selected_profiles || [])
+                  : streamingProfiles;
+                
+                const uniqueProfiles = profilesToShow.filter((profile, index, self) => 
                   index === self.findIndex(p => p.url === profile.url)
                 );
                 const sortedProfiles = [...uniqueProfiles].sort((a, b) => {
+                  // Helper function to count probably_matched criteria
+                  const countProbablyMatched = (profile) => {
+                    if (!profile.reason) return 0;
+                    try {
+                      const reasonData = JSON.parse(profile.reason);
+                      return Object.values(reasonData).filter(status => status === 'probably_matched').length;
+                    } catch (e) {
+                      return 0;
+                    }
+                  };
+
+                  // First priority: All matched profiles (all_criteria_met === true)
                   if (a.all_criteria_met === true && b.all_criteria_met !== true) return -1;
                   if (b.all_criteria_met === true && a.all_criteria_met !== true) return 1;
+
+                  // Second priority: Profiles with probably_matched (sorted by count, most first)
+                  const aProbablyCount = countProbablyMatched(a);
+                  const bProbablyCount = countProbablyMatched(b);
+                  
+                  if (aProbablyCount > 0 && bProbablyCount === 0) return -1;
+                  if (bProbablyCount > 0 && aProbablyCount === 0) return 1;
+                  if (aProbablyCount > 0 && bProbablyCount > 0) {
+                    return bProbablyCount - aProbablyCount; // Most probably_matched first
+                  }
+
+                  // Third priority: Score-based sorting for remaining profiles
                   return (b.score || 0) - (a.score || 0);
                 });
 
+                const tableTitle = searchState === 'completed' ? "All Profiles" : "Streaming Profiles";
+                const tableIcon = searchState === 'completed' 
+                  ? <Users className="text-blue-600" size={20} />
+                  : <Clock className="text-orange-600" size={20} />;
+                const tableBadgeClass = searchState === 'completed' 
+                  ? "bg-blue-100 text-blue-800"
+                  : "bg-orange-100 text-orange-800";
+
                 return renderProfileTable(
                   sortedProfiles,
-                  "All Profiles",
-                  <Users className="text-blue-600" size={20} />,
-                  "bg-blue-100 text-blue-800"
+                  tableTitle,
+                  tableIcon,
+                  tableBadgeClass
                 );
               })()}
             </div>
@@ -698,6 +775,7 @@ const ProspectSearch = () => {
                     >
                       <option value="exa_search">Exa Search</option>
                       <option value="tavily_search">Tavily Search</option>
+                      <option value="parallel_search">Parallel Search</option>
                     </select>
                   </div>
                   <button
@@ -711,8 +789,38 @@ const ProspectSearch = () => {
                 </div>
               </div>
 
+              {/* Streaming Status */}
+              {searchState === 'processing' && streamingProfiles.length > 0 && (
+                <div className="bg-white rounded-md shadow-sm border p-3 mb-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Clock className="text-orange-600" size={16} />
+                    <h3 className="text-sm font-medium text-gray-800">Live Streaming</h3>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="bg-orange-50 p-2 rounded-md border border-orange-100">
+                      <div className="text-orange-600 font-medium text-xs mb-1">Profiles Found</div>
+                      <div className="text-orange-900 text-lg font-medium flex items-center gap-2">
+                        {streamingProfiles.length}
+                        {newProfilesCount > 0 && (
+                          <span className="bg-green-500 text-white text-xs px-2 py-1 rounded-full animate-pulse">
+                            +{newProfilesCount} new
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <div className="bg-gray-50 p-2 rounded-md border border-gray-100">
+                      <div className="text-gray-600 font-medium text-xs mb-1">Status</div>
+                      <div className="text-gray-900 text-xs">
+                        {message}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Search Summary */}
-              {searchResults.profiles?.search_summary && (
+              {searchState === 'completed' && searchResults.profiles?.search_summary && (
                 <div className="bg-white rounded-md shadow-sm border p-3 mb-4">
                   <div className="flex items-center gap-2 mb-3">
                     <Building className="text-blue-600" size={16} />
@@ -735,7 +843,7 @@ const ProspectSearch = () => {
               )}
 
               {/* Criteria Section */}
-              {searchResults.profiles?.search_summary?.criteria && (
+              {searchState === 'completed' && searchResults.profiles?.search_summary?.criteria && (
                 <div className="bg-white rounded-md shadow-sm border p-3 mb-4">
                   <div className="flex items-center gap-2 mb-3">
                     <CheckCircle className="text-purple-600" size={16} />
@@ -757,7 +865,7 @@ const ProspectSearch = () => {
               )}
 
               {/* Statistics */}
-              {searchResults.profiles?.statistics && (
+              {searchState === 'completed' && searchResults.profiles?.statistics && (
                 <div className="bg-white rounded-md shadow-sm border p-3 mb-4">
                   <div className="flex items-center gap-2 mb-3">
                     <Users className="text-blue-600" size={16} />
@@ -775,13 +883,15 @@ const ProspectSearch = () => {
 
               {/* Action Buttons */}
               <div className="space-y-2">
-                <button
-                  onClick={exportToCSV}
-                  className="w-full px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm font-medium flex items-center justify-center gap-1"
-                >
-                  <Download size={16} />
-                  Download CSV
-                </button>
+                {searchState === 'completed' && (
+                  <button
+                    onClick={exportToCSV}
+                    className="w-full px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm font-medium flex items-center justify-center gap-1"
+                  >
+                    <Download size={16} />
+                    Download CSV
+                  </button>
+                )}
                 <button
                   onClick={resetSearch}
                   className="w-full px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 text-sm font-medium"
@@ -842,6 +952,7 @@ const ProspectSearch = () => {
                 >
                   <option value="exa_search">Exa Search</option>
                   <option value="tavily_search">Tavily Search</option>
+                  <option value="parallel_search">Parallel Search</option>
                 </select>
               </div>
               <button
