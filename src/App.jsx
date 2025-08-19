@@ -20,6 +20,7 @@ const ProspectSearch = () => {
   const [startX, setStartX] = useState(0);
   const [startWidth, setStartWidth] = useState(0);
   const tableRef = useRef(null);
+  const [activeTooltip, setActiveTooltip] = useState(null);
 
   // Debug logging
   console.log('ProspectSearch component rendered');
@@ -192,6 +193,13 @@ const ProspectSearch = () => {
         });
         // Continue polling every 5 seconds
         pollingTimerRef.current = setTimeout(() => pollStatus(id), 5000);
+      } else if (data.status === 'processing' && data.profiles?.results?.selected_profiles && data.profiles.results.selected_profiles.length > 0) {
+        // If we get selected_profiles during processing, switch to showing only those
+        console.log('Found selected_profiles during processing, switching to completed state', data.profiles.results.selected_profiles);
+        setStreamingProfiles([]);
+        setNewProfilesCount(0);
+        setSearchResults(data);
+        setSearchState('completed');
       } else if (data.status === 'completed') {
         // Clear streaming profiles and set final results
         setStreamingProfiles([]);
@@ -225,6 +233,7 @@ const ProspectSearch = () => {
     setNewProfilesCount(0);
     setMessage('');
     setError('');
+    setActiveTooltip(null);
   };
 
   const extractDomain = (url) => {
@@ -258,12 +267,8 @@ const ProspectSearch = () => {
     // Add any match criteria as columns
     const allMatchCriteria = new Set();
     profiles.forEach(profile => {
-      try {
-        const reason = typeof profile.reason === 'string' ? JSON.parse(profile.reason) : profile.reason;
-        if (reason) {
-          Object.keys(reason).forEach(key => allMatchCriteria.add(key));
-        }
-      } catch (e) {}
+      const criteriaResults = parseCriteriaResults(profile);
+      Object.keys(criteriaResults).forEach(key => allMatchCriteria.add(key));
     });
     
     const matchCriteriaArray = Array.from(allMatchCriteria);
@@ -271,11 +276,8 @@ const ProspectSearch = () => {
     
     // Create CSV rows
     const csvRows = profiles.map(profile => {
-      // Parse reason data
-      let reasonData = {};
-      try {
-        reasonData = typeof profile.reason === 'string' ? JSON.parse(profile.reason) : (profile.reason || {});
-      } catch (e) {}
+      // Parse criteria results data
+      const criteriaResults = parseCriteriaResults(profile);
       
       // Basic profile data
       const row = [
@@ -285,12 +287,12 @@ const ProspectSearch = () => {
         `"${profile.url || ''}"`,
         profile.all_criteria_met === true ? 'Yes' : 'No',
         `"${profile.search_term || ''}"`,
-        `"${profile.reason || ''}"`
+        `"${JSON.stringify(profile.criteria_results || profile.reason || '')}"`
       ];
       
       // Add match criteria data
       matchCriteriaArray.forEach(criteria => {
-        row.push(`"${reasonData[criteria] || ''}"`);
+        row.push(`"${criteriaResults[criteria] || ''}"`);
       });
       
       return row.join(',');
@@ -319,9 +321,56 @@ const ProspectSearch = () => {
     document.body.removeChild(link);
   };
 
+  // Helper function to parse criteria results and extract match information
+  const parseCriteriaResults = (profile) => {
+    if (!profile.criteria_results || !Array.isArray(profile.criteria_results)) {
+      // Fallback to old reason format if criteria_results doesn't exist
+      if (profile.reason) {
+        try {
+          const reasonObj = typeof profile.reason === 'string' ? JSON.parse(profile.reason) : profile.reason;
+          return reasonObj;
+        } catch (e) {
+          return {};
+        }
+      }
+      return {};
+    }
+    
+    // Convert criteria_results array to object format for compatibility
+    const result = {};
+    profile.criteria_results.forEach(criteriaResult => {
+      if (criteriaResult.criteria && criteriaResult.result) {
+        // Convert result to lowercase for consistency
+        let status = criteriaResult.result.toLowerCase();
+        
+        // Handle "Not Matched" -> "not_matched" conversion
+        if (status.includes(' ')) {
+          status = status.replace(/ /g, '_');
+        }
+        
+        result[criteriaResult.criteria.toLowerCase()] = status;
+      }
+    });
+    
+    return result;
+  };
 
-
-
+  // Helper function to get reason object for tooltip
+  const getCriteriaReason = (profile, criteria) => {
+    if (!profile.criteria_results || !Array.isArray(profile.criteria_results)) {
+      return null;
+    }
+    
+    const criteriaResult = profile.criteria_results.find(cr => 
+      cr.criteria && cr.criteria.toLowerCase() === criteria.toLowerCase()
+    );
+    
+    if (criteriaResult && criteriaResult.reason) {
+      return criteriaResult.reason;
+    }
+    
+    return null;
+  };
 
   // Helper function to render profile table
   const renderProfileTable = (profiles, title, icon, colorClass) => {
@@ -340,22 +389,8 @@ const ProspectSearch = () => {
       );
     }
 
-    // Helper function to parse reason and extract match information
-    const parseReason = (reason) => {
-      if (!reason) return {};
-      
-      try {
-        // Handle both string and object formats
-        const reasonObj = typeof reason === 'string' ? JSON.parse(reason) : reason;
-        return reasonObj;
-      } catch (e) {
-        // If parsing fails, return empty object
-        return {};
-      }
-    };
-
     // Helper function to render match status with tooltip
-    const renderMatchStatus = (status, thought = null, criteria = null, isFirstRow = false) => {
+    const renderMatchStatus = (status, profile = null, criteria = null) => {
       const getStatusContent = () => {
         if (status === 'matched') {
           return (
@@ -375,15 +410,13 @@ const ProspectSearch = () => {
               Unknown
             </span>
           );
-        }
-        else if(status === 'probably_matched') {
+        } else if(status === 'probably_matched') {
           return (
             <span className="inline-flex items-center justify-center px-3 py-1 rounded-full text-xs font-medium bg-orange-600 text-yellow-200 border border-yellow-200">
               Probably
             </span>
           );
-        }
-        else {
+        } else {
           return (
             <span className="inline-flex items-center justify-center px-3 py-1 rounded-full text-xs font-medium bg-gray-50 text-gray-600 border border-gray-200">
               other
@@ -392,70 +425,47 @@ const ProspectSearch = () => {
         }
       };
 
-      // If no thought data, return simple status
-      if (!thought) {
+      // If no profile data, return simple status
+      if (!profile || !criteria) {
         return getStatusContent();
       }
 
-      // Parse thought data to get specific criteria thought
-      let tooltipText = '';
-      try {
-        const thoughtData = JSON.parse(thought);
-        if (criteria && thoughtData[criteria]) {
-          tooltipText = thoughtData[criteria];
-        }
-      } catch (e) {
-        console.error('Error parsing thought data:', e);
-        // Fallback: show raw thought data if parsing fails
-        tooltipText = `Raw thought: ${thought}`;
-      }
-
-      // Debug logging
-      console.log('Tooltip debug:', { status, thought, criteria, tooltipText });
-
-      // For testing: always show tooltip with some content
-      if (!tooltipText || tooltipText.trim() === '') {
-        tooltipText = `Test tooltip for ${criteria}: ${status}`;
-      }
-
+      // Get reason object for tooltip
+      const reason = getCriteriaReason(profile, criteria);
+      
+      const tooltipId = `tooltip-${profile.url}-${criteria}`.replace(/[^a-zA-Z0-9]/g, '-');
+      
       return (
-        <div className="relative group inline-block">
+        <div className="relative group inline-block cursor-pointer" onClick={() => setActiveTooltip(activeTooltip === tooltipId ? null : tooltipId)}>
           {getStatusContent()}
-          <div className="tooltip absolute px-3 py-2 bg-gray-800 bg-opacity-90 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-[999999] max-w-xs break-words shadow-lg min-w-32 border border-gray-600" style={{ 
-            ...(isFirstRow ? {
-              top: '100%',
-              marginTop: '8px'
-            } : {
-              bottom: '100%',
-              marginBottom: '8px'
-            }),
-            left: '50%', 
-            transform: 'translateX(-50%)',
-            zIndex: 999999 
-          }}>
-            <div className="whitespace-normal text-center font-bold">{tooltipText || 'No tooltip data'}</div>
-            <div className="absolute" style={{
-              ...(isFirstRow ? {
-                bottom: '100%',
-                left: '50%',
-                transform: 'translateX(-50%)',
-                width: '0',
-                height: '0',
-                borderLeft: '4px solid transparent',
-                borderRight: '4px solid transparent',
-                borderBottom: '4px solid #1f2937'
-              } : {
-                top: '100%',
-                left: '50%',
-                transform: 'translateX(-50%)',
-                width: '0',
-                height: '0',
-                borderLeft: '4px solid transparent',
-                borderRight: '4px solid transparent',
-                borderTop: '4px solid #1f2937'
-              })
-            }}></div>
-          </div>
+          {activeTooltip === tooltipId && (
+            <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-[999999]" onClick={(e) => e.stopPropagation()}>
+              <div className="tooltip bg-gray-800 bg-opacity-95 text-white text-sm rounded-lg shadow-lg border border-gray-600 p-4 max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
+                <div className="flex justify-between items-center mb-3 border-b border-gray-600 pb-2">
+                  <div className="font-bold">{criteria} Details</div>
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation(); 
+                      setActiveTooltip(null);
+                    }}
+                    className="text-gray-400 hover:text-white text-lg"
+                  >
+                    ✕
+                  </button>
+                </div>
+                {reason ? (
+                  <div className="whitespace-pre-wrap text-left">
+                    <div className="mb-2"><span className="font-bold">Value:</span> {reason.inferred_value || 'Unknown'}</div>
+                    <div className="mb-2"><span className="font-bold">Source:</span> {reason.source || 'Unknown'}</div>
+                    <div className="mb-2"><span className="font-bold">Reason:</span> {reason.source_reason || 'Unknown'}</div>
+                    {reason.thought && <div className="mb-2"><span className="font-bold">Thought:</span> {reason.thought}</div>}
+                  </div>
+                ) : (
+                  <div className="whitespace-pre-wrap text-center">No reason data available</div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       );
     };
@@ -463,8 +473,16 @@ const ProspectSearch = () => {
     // Get unique match criteria from all profiles
     const allMatchCriteria = new Set();
     profiles.forEach(profile => {
-      const reason = parseReason(profile.reason);
-      Object.keys(reason).forEach(key => allMatchCriteria.add(key));
+      if (profile.criteria_results && Array.isArray(profile.criteria_results)) {
+        profile.criteria_results.forEach(cr => {
+          if (cr.criteria) {
+            allMatchCriteria.add(cr.criteria.toLowerCase());
+          }
+        });
+      } else {
+        const criteriaResults = parseCriteriaResults(profile);
+        Object.keys(criteriaResults).forEach(key => allMatchCriteria.add(key));
+      }
     });
 
     // Ensure consistent table structure with minimum columns
@@ -491,10 +509,13 @@ const ProspectSearch = () => {
         
         <div className="table-container" style={{ 
           overflowX: 'auto',
-          width: '100%'
+          width: '100%',
+          position: 'relative' // Ensure proper stacking context
         }}>
           <table ref={tableRef} className="excel-table" style={{ 
-            minWidth: searchState === 'processing' ? '1000px' : 'auto'
+            minWidth: searchState === 'processing' ? '1000px' : 'auto',
+            position: 'relative', // Ensure proper stacking context
+            zIndex: 1 // Lower z-index than tooltips
           }}>
             <thead>
               <tr className="excel-header">
@@ -580,7 +601,7 @@ const ProspectSearch = () => {
             </thead>
             <tbody>
               {profiles.map((profile, index) => {
-                const reason = parseReason(profile.reason);
+                const criteriaResults = parseCriteriaResults(profile);
                 return (
                   <tr key={index} className="excel-row">
                     <td className="fixed-column excel-cell">
@@ -615,7 +636,7 @@ const ProspectSearch = () => {
                     </td>
                     {matchCriteriaArray.map(criteria => (
                       <td key={criteria} className="excel-cell">
-                        {renderMatchStatus(reason[criteria], profile.thought, criteria, index === 0)}
+                        {renderMatchStatus(criteriaResults[criteria], profile, criteria)}
                       </td>
                     ))}
                     <td className="excel-cell">
@@ -635,6 +656,25 @@ const ProspectSearch = () => {
             </tbody>
           </table>
         </div>
+        
+        {/* Global styles to ensure tooltips are always on top */}
+        <style jsx>{`
+          .tooltip {
+            position: absolute;
+            z-index: 9999999 !important;
+          }
+          
+          /* Ensure the tooltip container is above all other elements */
+          .table-container {
+            isolation: isolate;
+          }
+          
+          /* Make sure tooltips are rendered above any borders */
+          .excel-table {
+            border-collapse: separate;
+            border-spacing: 0;
+          }
+        `}</style>
       </div>
     );
   };
@@ -690,13 +730,8 @@ const ProspectSearch = () => {
                 const sortedProfiles = [...uniqueProfiles].sort((a, b) => {
                   // Helper function to count probably_matched criteria
                   const countProbablyMatched = (profile) => {
-                    if (!profile.reason) return 0;
-                    try {
-                      const reasonData = JSON.parse(profile.reason);
-                      return Object.values(reasonData).filter(status => status === 'probably_matched').length;
-                    } catch (e) {
-                      return 0;
-                    }
+                    const criteriaResults = parseCriteriaResults(profile);
+                    return Object.values(criteriaResults).filter(status => status === 'probably_matched').length;
                   };
 
                   // First priority: All matched profiles (all_criteria_met === true)
