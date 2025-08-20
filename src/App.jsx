@@ -439,15 +439,17 @@ const ProspectSearch = () => {
         <div className="relative group inline-block cursor-pointer" onClick={() => setActiveTooltip(activeTooltip === tooltipId ? null : tooltipId)}>
           {getStatusContent()}
           {activeTooltip === tooltipId && (
-            <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-[999999]" onClick={(e) => e.stopPropagation()}>
-              <div className="tooltip bg-gray-800 bg-opacity-95 text-white text-sm rounded-lg shadow-lg border border-gray-600 p-4 max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
+            <div 
+              className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-[999999]" 
+              onClick={() => setActiveTooltip(null)}
+            >
+              <div 
+                className="tooltip bg-gray-800 bg-opacity-95 text-white text-sm rounded-lg shadow-lg border border-gray-600 p-4 max-w-md w-full mx-4" 
+                onClick={(e) => e.stopPropagation()}
+              >
                 <div className="flex justify-between items-center mb-3 border-b border-gray-600 pb-2">
                   <div className="font-bold">{criteria} Details</div>
                   <button 
-                    onClick={(e) => {
-                      e.stopPropagation(); 
-                      setActiveTooltip(null);
-                    }}
                     className="text-gray-400 hover:text-white text-lg"
                   >
                     ✕
