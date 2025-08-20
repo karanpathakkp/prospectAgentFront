@@ -152,3 +152,58 @@
   padding: 6px 8px;
   font-size: 0.875rem;
 }
+
+/* Serial number column styling */
+.excel-table th#column-serial,
+.excel-table td:first-child {
+  width: 50px;
+  min-width: 50px;
+  max-width: 50px;
+  text-align: center;
+}
+
+/* Photo column styling */
+.excel-table th#column-photo,
+.excel-table td:nth-child(2) {
+  width: 60px;
+  min-width: 60px;
+  max-width: 60px;
+  text-align: center;
+}
+
+/* Profile image styling */
+.excel-table img {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid #e5e7eb;
+  display: inline-block;
+}
+
+/* Make the first three columns sticky */
+.excel-table th:nth-child(1),
+.excel-table th:nth-child(2),
+.excel-table th:nth-child(3),
+.excel-table td:nth-child(1),
+.excel-table td:nth-child(2),
+.excel-table td:nth-child(3) {
+  position: sticky;
+  background-color: inherit;
+  z-index: 1;
+}
+
+.excel-table th:nth-child(1),
+.excel-table td:nth-child(1) {
+  left: 0;
+}
+
+.excel-table th:nth-child(2),
+.excel-table td:nth-child(2) {
+  left: 50px;
+}
+
+.excel-table th:nth-child(3),
+.excel-table td:nth-child(3) {
+  left: 110px;
+}

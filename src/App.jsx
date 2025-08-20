@@ -450,6 +450,10 @@ const ProspectSearch = () => {
                 <div className="flex justify-between items-center mb-3 border-b border-gray-600 pb-2">
                   <div className="font-bold">{criteria} Details</div>
                   <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setActiveTooltip(null);
+                    }}
                     className="text-gray-400 hover:text-white text-lg"
                   >
                     ✕
@@ -521,6 +525,36 @@ const ProspectSearch = () => {
           }}>
             <thead>
               <tr className="excel-header">
+                <th 
+                  id="column-serial" 
+                  className="fixed-column-header resizable-column"
+                  style={{ width: columnWidths['serial'] || 50 }}
+                >
+                  #
+                  <div 
+                    className="resizer" 
+                    onMouseDown={(e) => handleResizeStart(e, 'serial')}
+                    onTouchStart={(e) => {
+                      const touch = e.touches[0];
+                      handleResizeStart({...e, clientX: touch.clientX}, 'serial');
+                    }}
+                  />
+                </th>
+                <th 
+                  id="column-photo" 
+                  className="fixed-column-header resizable-column"
+                  style={{ width: columnWidths['photo'] || 60 }}
+                >
+                  Photo
+                  <div 
+                    className="resizer" 
+                    onMouseDown={(e) => handleResizeStart(e, 'photo')}
+                    onTouchStart={(e) => {
+                      const touch = e.touches[0];
+                      handleResizeStart({...e, clientX: touch.clientX}, 'photo');
+                    }}
+                  />
+                </th>
                 <th 
                   id="column-name" 
                   className="fixed-column-header resizable-column"
@@ -606,6 +640,24 @@ const ProspectSearch = () => {
                 const criteriaResults = parseCriteriaResults(profile);
                 return (
                   <tr key={index} className="excel-row">
+                    <td className="fixed-column excel-cell text-center">
+                      <div className="text-gray-700 font-medium">{index + 1}</div>
+                    </td>
+                    <td className="fixed-column excel-cell text-center">
+                      {profile.image_url && profile.image_url !== "" ? (
+                        <img 
+                          src={profile.image_url} 
+                          alt={`${profile.first_name || ''} ${profile.last_name || ''}`}
+                          className="w-8 h-8 rounded-full object-cover border border-gray-200 mx-auto"
+                          onError={(e) => {
+                            e.target.onerror = null;
+                            e.target.src = "https://static.licdn.com/aero-v1/sc/h/9c8pery4andzj6ohjkjp54ma2"; // Default LinkedIn placeholder
+                          }}
+                        />
+                      ) : (
+                        <div className="w-8 h-8 rounded-full bg-gray-200 mx-auto"></div>
+                      )}
+                    </td>
                     <td className="fixed-column excel-cell">
                       <div className="font-medium text-gray-900 truncate">
                         {profile.first_name && profile.last_name 
