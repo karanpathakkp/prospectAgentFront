@@ -392,19 +392,19 @@ const ProspectSearch = () => {
     // Helper function to render match status with tooltip
     const renderMatchStatus = (status, profile = null, criteria = null) => {
       const getStatusContent = () => {
-        if (status === 'matched') {
+      if (status === 'matched') {
           return (
             <span className="inline-flex items-center justify-center px-3 py-1 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-200">
               Match
             </span>
           );
-        } else if (status === 'not_matched') {
+      } else if (status === 'not_matched') {
           return (
             <span className="inline-flex items-center justify-center px-3 py-1 rounded-full text-xs font-medium bg-red-50 text-red-700 border border-red-200">
               No match
             </span>
           );
-        } else if (status === 'not_found') {
+      } else if (status === 'not_found') {
           return (
             <span className="inline-flex items-center justify-center px-3 py-1 rounded-full text-xs font-medium bg-gray-50 text-gray-600 border border-gray-200">
               Unknown
@@ -416,7 +416,7 @@ const ProspectSearch = () => {
               Probably
             </span>
           );
-        } else {
+      } else {
           return (
             <span className="inline-flex items-center justify-center px-3 py-1 rounded-full text-xs font-medium bg-gray-50 text-gray-600 border border-gray-200">
               other
@@ -680,7 +680,7 @@ const ProspectSearch = () => {
                         <div className="flex items-center">
                           <span className="text-gray-400 mr-1">?</span>
                           <span className="text-sm">Unknown</span>
-                        </div>
+                      </div>
                         )}
                     </td>
                     <td className="excel-cell">
@@ -834,49 +834,49 @@ const ProspectSearch = () => {
                 
                 <div className="mb-3">
                   <label className="block text-sm font-medium text-gray-600 mb-1">Criteria Sentence</label>
-                  <textarea
-                    value={criteriaSentence}
-                    onChange={(e) => setCriteriaSentence(e.target.value)}
+              <textarea
+                value={criteriaSentence}
+                onChange={(e) => setCriteriaSentence(e.target.value)}
                     placeholder="Enter search criteria"
                     className="w-full px-3 py-2 border border-gray-200 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm"
                     rows={2}
                   />
-                </div>
-                
+            </div>
+            
                 <div className="grid grid-cols-1 gap-3">
-                  <div>
+              <div>
                     <label className="block text-sm font-medium text-gray-600 mb-1">Profile Count</label>
-                    <input
-                      type="number"
-                      min={1}
-                      max={50}
-                      value={desiredProfileCount}
-                      onChange={(e) => setDesiredProfileCount(Number(e.target.value))}
+                <input
+                  type="number"
+                  min={1}
+                  max={50}
+                  value={desiredProfileCount}
+                  onChange={(e) => setDesiredProfileCount(Number(e.target.value))}
                       className="w-full px-3 py-2 border border-gray-200 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm"
-                    />
-                  </div>
-                  <div>
+                />
+              </div>
+              <div>
                     <label className="block text-sm font-medium text-gray-600 mb-1">Search Method</label>
-                    <select
-                      value={searchMethod}
-                      onChange={(e) => setSearchMethod(e.target.value)}
+                <select
+                  value={searchMethod}
+                  onChange={(e) => setSearchMethod(e.target.value)}
                       className="w-full px-3 py-2 border border-gray-200 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm"
-                    >
-                      <option value="exa_search">Exa Search</option>
-                      <option value="tavily_search">Tavily Search</option>
+                >
+                  <option value="exa_search">Exa Search</option>
+                  <option value="tavily_search">Tavily Search</option>
                       <option value="parallel_search">Parallel Search</option>
-                    </select>
-                  </div>
-                  <button
-                    onClick={initiateSearch}
+                </select>
+              </div>
+              <button
+                onClick={initiateSearch}
                     disabled={!criteriaSentence.trim()}
                     className="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1 text-sm font-medium"
-                  >
+              >
                     <Search size={16} />
                     New Search
-                  </button>
-                </div>
-              </div>
+              </button>
+          </div>
+        </div>
 
               {/* Streaming Status */}
               {searchState === 'processing' && streamingProfiles.length > 0 && (
@@ -894,19 +894,19 @@ const ProspectSearch = () => {
                           <span className="bg-green-500 text-white text-xs px-2 py-1 rounded-full animate-pulse">
                             +{newProfilesCount} new
                           </span>
-                        )}
-                      </div>
-                    </div>
+                )}
+              </div>
+            </div>
                     
                     <div className="bg-gray-50 p-2 rounded-md border border-gray-100">
                       <div className="text-gray-600 font-medium text-xs mb-1">Status</div>
                       <div className="text-gray-900 text-xs">
                         {message}
-                      </div>
-                    </div>
-                  </div>
                 </div>
-              )}
+              </div>
+            </div>
+          </div>
+        )}
 
               {/* Search Summary */}
               {searchState === 'completed' && searchResults.profiles?.search_summary && (
@@ -914,22 +914,22 @@ const ProspectSearch = () => {
                   <div className="flex items-center gap-2 mb-3">
                     <Building className="text-blue-600" size={16} />
                     <h3 className="text-sm font-medium text-gray-800">Search Summary</h3>
-                  </div>
+                </div>
                   <div className="space-y-2">
                     <div className="bg-gray-50 p-2 rounded-md border border-gray-100">
                       <div className="text-gray-600 font-medium text-xs mb-1">Company</div>
                       <div className="text-gray-900 text-sm font-medium">{searchResults.profiles.search_summary.company}</div>
-                    </div>
-                    
+            </div>
+
                     <div className="bg-gray-50 p-2 rounded-md border border-gray-100">
                       <div className="text-gray-600 font-medium text-xs mb-1">Search Terms</div>
                       <div className="text-gray-900 text-xs">
-                        {searchResults.profiles.search_summary.search_terms.join(', ')}
-                      </div>
+                      {searchResults.profiles.search_summary.search_terms.join(', ')}
                     </div>
                   </div>
                 </div>
-              )}
+              </div>
+            )}
 
               {/* Criteria Section */}
               {searchState === 'completed' && searchResults.profiles?.search_summary?.criteria && (
@@ -937,21 +937,21 @@ const ProspectSearch = () => {
                   <div className="flex items-center gap-2 mb-3">
                     <CheckCircle className="text-purple-600" size={16} />
                     <h3 className="text-sm font-medium text-gray-800">Criteria</h3>
-                  </div>
+                        </div>
                   <div className="space-y-2">
                     {Object.entries(searchResults.profiles.search_summary.criteria).map(([key, value]) => (
                       <div key={key} className="bg-purple-50 p-2 rounded-md border border-purple-100">
                         <div className="text-purple-600 font-medium text-xs mb-1 capitalize">
                           {key.replace(/_/g, ' ')}
-                        </div>
+                      </div>
                         <div className="text-purple-800 text-xs">
                           {value}
-                        </div>
-                      </div>
-                    ))}
+                    </div>
                   </div>
+                    ))}
                 </div>
-              )}
+              </div>
+            )}
 
               {/* Statistics */}
               {searchState === 'completed' && searchResults.profiles?.statistics && (
@@ -967,28 +967,28 @@ const ProspectSearch = () => {
                        searchResults.profiles.statistics.total_selected || 0}
                     </div>
                   </div>
-                </div>
-              )}
+              </div>
+            )}
 
-              {/* Action Buttons */}
+            {/* Action Buttons */}
               <div className="space-y-2">
                 {searchState === 'completed' && (
-                  <button
-                    onClick={exportToCSV}
+              <button
+                onClick={exportToCSV}
                     className="w-full px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm font-medium flex items-center justify-center gap-1"
-                  >
+              >
                     <Download size={16} />
-                    Download CSV
-                  </button>
+                Download CSV
+              </button>
                 )}
-                <button
-                  onClick={resetSearch}
+              <button
+                onClick={resetSearch}
                   className="w-full px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 text-sm font-medium"
-                >
+              >
                   Reset Search
-                </button>
-              </div>
+              </button>
             </div>
+          </div>
           </div>
         ) : (
           // Single column layout for search form
@@ -1030,7 +1030,7 @@ const ProspectSearch = () => {
                       className="w-full px-3 py-2 border border-gray-200 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm"
                   disabled={searchState === 'searching' || searchState === 'processing'}
                 />
-              </div>
+      </div>
               <div>
                     <label className="block text-sm font-medium text-gray-600 mb-1">Search Method</label>
                 <select
@@ -1043,7 +1043,7 @@ const ProspectSearch = () => {
                   <option value="tavily_search">Tavily Search</option>
                   <option value="parallel_search">Parallel Search</option>
                 </select>
-              </div>
+    </div>
               <button
                 onClick={initiateSearch}
                 disabled={!criteriaSentence.trim() || searchState === 'searching' || searchState === 'processing'}
