@@ -7,9 +7,8 @@ const isNetlify = window.location.hostname.includes('netlify.app');
  //export const API_BASE_URL = 'http://localhost:80';
 
 export const API_BASE_URL = isDevelopment 
-  ? 'http://139.59.27.253:80' 
+  ? 'http://157.245.99.88:3000' 
   : '/api';
-
 export const API_ENDPOINTS = {
   SEARCH: `${API_BASE_URL}/prospect/search`,
   STATUS: (id) => `${API_BASE_URL}/prospect/status/${id}`,
