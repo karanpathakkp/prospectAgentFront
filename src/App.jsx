@@ -91,7 +91,7 @@ const ProspectSearch = () => {
     if (!table) return;
     
     // Get all column widths at the start
-    const allColumns = ['name', 'result', 'title', 'actions'];
+    const allColumns = ['name', 'result', 'title'];
     const currentWidths = {};
     allColumns.forEach(col => {
       currentWidths[col] = columnWidths[col] || 
@@ -573,7 +573,7 @@ const ProspectSearch = () => {
                 <th 
                   id="column-name" 
                   className="fixed-column-header resizable-column"
-                  style={{ width: columnWidths['name'] || 150 }}
+                  style={{ width: columnWidths['name'] || 200 }}
                 >
                   Name
                   <div 
@@ -633,21 +633,6 @@ const ProspectSearch = () => {
                     />
                   </th>
                 ))}
-                <th 
-                  id="column-actions" 
-                  className="resizable-column"
-                  style={{ width: columnWidths['actions'] || 100 }}
-                >
-                  Actions
-                  <div 
-                    className="resizer" 
-                    onMouseDown={(e) => handleResizeStart(e, 'actions')}
-                    onTouchStart={(e) => {
-                      const touch = e.touches[0];
-                      handleResizeStart({...e, clientX: touch.clientX}, 'actions');
-                    }}
-                  />
-                </th>
               </tr>
             </thead>
             <tbody>
@@ -674,10 +659,20 @@ const ProspectSearch = () => {
                       )}
                     </td>
                     <td className="fixed-column excel-cell">
-                      <div className="font-medium text-gray-900 truncate">
-                        {profile.first_name && profile.last_name 
-                          ? `${profile.first_name} ${profile.last_name}` 
-                          : 'N/A'}
+                      <div className="flex flex-row items-center gap-2">
+                        <div className="font-medium text-gray-900 truncate">
+                          {profile.first_name && profile.last_name 
+                            ? `${profile.first_name} ${profile.last_name}` 
+                            : 'N/A'}
+                        </div>
+                        <a
+                          href={profile.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:text-blue-800 text-xs font-medium flex items-center gap-1"
+                        >
+                          <ExternalLink size={12} />
+                        </a>
                       </div>
                     </td>
                     <td className="excel-cell">
@@ -708,17 +703,6 @@ const ProspectSearch = () => {
                         {renderMatchStatus(criteriaResults[criteria], profile, criteria)}
                       </td>
                     ))}
-                    <td className="excel-cell">
-                        <a
-                          href={profile.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center gap-1"
-                        >
-                          View
-                          <ExternalLink size={14} />
-                        </a>
-                    </td>
                   </tr>
                 );
               })}
